@@ -1,0 +1,6 @@
+file(GLOB SRCS *.cpp)
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+
+ADD_EXECUTABLE(bench ${SRCS})
+
