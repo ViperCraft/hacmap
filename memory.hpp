@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <cstring>
 #include <stdint.h>
 #include <memory>
 #include <fstream>
@@ -13,7 +14,7 @@ enum DeleterType
     DELETER_TYPE_FREE           = 1, // using free()
     DELETER_TYPE_DELETEARRAY    = 2, // using delete[]
     DELETER_TYPE_UNMAP          = 3,
-    DELETER_TYPE_PTR_MASK       = 0x3 
+    DELETER_TYPE_PTR_MASK       = 0x3
 };
 
 // Compact memory holder to the properly allocated data
@@ -137,7 +138,7 @@ public:
     {
         mem_ += by;
     }
-    
+
     /*
         init from memory reference
         */
@@ -145,7 +146,7 @@ public:
         : mholder_(MemoryHolder::mk(mem, mem_size))
         , mem_(mholder_.get_ptr<uint8_t>())
         {}
-    
+
     /*
         int from memory buffer
         */
@@ -153,17 +154,17 @@ public:
         : mholder_(MemoryHolder::mk(std::move(buffer)))
         , mem_(mholder_.get_ptr<uint8_t>())
     {}
-    
+
     template<typename T>
     MemoryReader& operator >> ( T &out )
     {
         // TODO: is integral type check
-        
+
         T const *pt = reinterpret_cast<T const*>(mem_);
         mem_ += sizeof(T);
-        
+
         out = *pt;
-        
+
         return *this;
     }
 
@@ -171,9 +172,9 @@ public:
     {
         return mem_ - mholder_.get_ptr<uint8_t>();
     }
-    
+
     MemoryHolder&& get_ownership()
-    {            
+    {
         return std::move(mholder_);
     }
 
@@ -187,7 +188,7 @@ public:
         is.clear();
         return size - curr;
     }
-    
+
 private:
     MemoryHolder                mholder_;
     uint8_t               const *mem_;
@@ -199,20 +200,20 @@ class OStreamProxy
 public:
     OStreamProxy( std::ostream &os ) : os_(&os), buffer_(nullptr) {}
     OStreamProxy( std::vector<uint8_t> &buffer ) : os_(nullptr), buffer_(&buffer) {}
-    
+
     template<typename T>
     OStreamProxy & operator << ( T const &v )
-    { 
+    {
         static_assert( std::is_trivial<T>::value, "support only POD types!" );
-        return write(&v, sizeof(v)); 
+        return write(&v, sizeof(v));
     }
 
-    void prealloc( size_t sz ) 
+    void prealloc( size_t sz )
     {
         if( buffer_ )
             buffer_->reserve(sz);
     }
-    
+
     template<typename Iter, typename Func>
     void write_range( Iter beg, Iter end, Func f )
     {
@@ -226,11 +227,11 @@ public:
     {
         if(buffer_)
             return buffer_->size();
-        
+
 
         return os_->tellp();
     }
-    
+
     template<typename T>
     OStreamProxy& write( T const *data, size_t sz )
     {
@@ -243,7 +244,7 @@ public:
         {
             os_->write(reinterpret_cast<const char *>(data), sz);
         }
-        
+
         return *this;
     }
 
@@ -251,5 +252,5 @@ private:
     std::ostream            *os_;
     std::vector<uint8_t>    *buffer_;
 };
- 
+
 } // namespace utils

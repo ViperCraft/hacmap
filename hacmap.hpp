@@ -109,7 +109,7 @@ private:
             // each bucket must sorted by key before get flushed
             std::sort(b.begin(), b.end());
             
-            // store keys and values separatly
+            // store keys and values separately
             // compress keys by storing only higher key part
 
             BitArrayWriter bwr(b.size() * key_bits_store);

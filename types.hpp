@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include "memory.hpp"
 #include <stdint.h>
 #include <iostream>
@@ -25,22 +26,22 @@ inline uint32_t maxbits(unsigned long long int const v)
 {
     return v == 0 ? 0 : 64 - __builtin_clzll(v);
 }
-   
+
 }
 
-int const MAX_OFFSET_BITS = 43; 
-int const MAX_KEYS_IN_BUCKET = 21; 
+int const MAX_OFFSET_BITS = 43;
+int const MAX_KEYS_IN_BUCKET = 21;
 
 struct BucketEntry
 {
-    uint64_t    offset : 43; // up to 8 ТB storage size, about 2 trillons of keys
+    uint64_t    offset : 43; // up to 8 ТB storage size, about 2 trillions of keys
     uint32_t    nkeys  : 21; // up to 2 million keys in bucket, usually not more than 1K
 };
 
 struct BucketEntryTiny
 {
-    uint32_t    offset : 23; // up 64GB of storage size, if each buket is aligned to 8 bytes
-    uint32_t    nkets  : 9; // max 512 records per bucket only!
+    uint32_t    offset : 23; // up 64GB of storage size, if each bucket is aligned to 8 bytes
+    uint32_t    nkeys  : 9; // max 512 records per bucket only!
 };
 
 static_assert( sizeof(BucketEntry) == 8, "BucketEntry must fit into 8 bytes!" );
@@ -58,12 +59,12 @@ struct KVCheck
 inline uint32_t calc_buckets_count( size_t kv_sz_total, size_t const page_size )
 {
     if( kv_sz_total )
-    {        
+    {
         size_t ratio = kv_sz_total > page_size ? kv_sz_total / page_size : 1;
-        
-        return 1U << (64 - __builtin_clzl(ratio) ); 
+
+        return 1U << (64 - __builtin_clzl(ratio) );
     }
-    
+
     return 0;
 }
 
@@ -76,14 +77,14 @@ private:
         rdr.seek(rdr.size() - 1);
 
         uint8_t nbucket_p2;
-        
+
         rdr >> nbucket_p2;
 
 
         uint8_t _key_bits_store;
 
         // detect if higher bit is set then
-        // we also need to get previuos byte too
+        // we also need to get previous byte too
         if( nbucket_p2 & 0x80 )
         {
             // clear bit
@@ -109,11 +110,11 @@ public:
     {
         dstart_ = data_.get_ptr<uint8_t const>();
     }
-    
+
     size_t get_mask() const { return nbuckets_ - 1; }
     size_t get_nbuckets() const { return nbuckets_; }
     size_t get_key_bits_store() const { return key_bits_store_; }
-    
+
     // return number of records!
     size_t size() const
     {
@@ -137,7 +138,7 @@ public:
     {
         return reinterpret_cast<BucketEntry const *>(get_data_start());
     }
-    
+
     // return bucket entry[offset, nkeys] by bucket index
     BucketEntry get(size_t i) const
     {
@@ -151,7 +152,7 @@ public:
         BucketEntry be = get_entries()[i];
         return std::make_pair(dstart_ + be.offset, uint32_t(be.nkeys));
     }
-    
+
     size_t get_mem_size() const
     {
         return data_.get_mem_size();
