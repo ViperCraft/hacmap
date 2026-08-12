@@ -179,4 +179,21 @@ private:
 } // namespace detail
 
 
+namespace bits {
 
+inline uint32_t maxbits(unsigned int const v)
+{
+    return v == 0 ? 0 : 32 - __builtin_clz(v);
+}
+
+inline uint32_t maxbits(unsigned long int const v)
+{
+    return v == 0 ? 0 : 64 - __builtin_clzl(v);
+}
+
+inline uint32_t maxbits(unsigned long long int const v)
+{
+    return v == 0 ? 0 : 64 - __builtin_clzll(v);
+}
+
+}

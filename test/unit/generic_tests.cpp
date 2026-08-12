@@ -4,6 +4,102 @@
 #include <fstream>
 
 
+
+// Tests for the HAMapSearcher class.
+class HAMapSearcherTest : public testing::Test {
+protected:
+    // You can remove any or all of these functions if its body
+    // is empty.
+    HAMapSearcherTest() {
+        // You can do set-up work for each test here.
+    }
+
+    virtual ~HAMapSearcherTest() {
+        // You can do clean-up work that doesn't throw exceptions here.
+    }
+
+    // If the constructor and destructor are not enough for setting up
+    // and cleaning up each test, you can define the following methods:
+
+    virtual void SetUp() {
+        // Code here will be called immediately after the constructor (right
+        // before each test).
+    }
+
+    virtual void TearDown() {
+        // Code here will be called immediately after each test (right
+        // before the destructor).
+    }
+};
+
+TEST_F(HAMapSearcherTest, Get) {
+    HAMapIndexer<int, int> idx;
+    idx.add(1, 1);
+    idx.add(2, 2);
+    idx.add(3, 3);
+    HAMapSearcher<int, int> searcher(idx);
+    EXPECT_EQ(searcher.search(1), &idx.get_bucket_arr(0)[0].second);
+}
+
+TEST_F(HAMapSearcherTest, Get_Empty) {
+    HAMapIndexer<int, int> idx;
+    HAMapSearcher<int, int> searcher(idx);
+    EXPECT_EQ(searcher.search(1), nullptr);
+}
+
+TEST_F(HAMapSearcherTest, Get_NotExist) {
+    HAMapIndexer<int, int> idx;
+    idx.add(1, 1);
+    idx.add(2, 2);
+    idx.add(3, 3);
+    HAMapSearcher<int, int> searcher(idx);
+    EXPECT_EQ(searcher.search(4), nullptr);
+}
+
+TEST_F(HAMapSearcherTest, Get_Multiple) {
+    HAMapIndexer<int, int> idx;
+    idx.add(1, 1);
+    idx.add(2, 2);
+    idx.add(3, 3);
+    idx.add(4, 4);
+    idx.add(5, 5);
+    HAMapSearcher<int, int> searcher(idx);
+    EXPECT_EQ(searcher.search(1), &idx.get_bucket_arr(0)[0].second);
+    EXPECT_EQ(searcher.search(2), &idx.get_bucket_arr(0)[1].second);
+    EXPECT_EQ(searcher.search(3), &idx.get_bucket_arr(0)[2].second);
+    EXPECT_EQ(searcher.search(4), &idx.get_bucket_arr(1)[0].second);
+    EXPECT_EQ(searcher.search(5), &idx.get_bucket_arr(1)[1].second);
+}
+
+TEST_F(HAMapSearcherTest, Get_Multiple_Empty) {
+    HAMapIndexer<int, int> idx;
+    HAMapSearcher<int, int> searcher(idx);
+    EXPECT_EQ(searcher.search(1), nullptr);
+}
+
+TEST_F(HAMapSearcherTest, Get_Multiple_NotExist) {
+    HAMapIndexer<int, int> idx;
+    idx.add(1, 1);
+    idx.add(2, 2);
+    idx.add(3, 3);
+    idx.add(4, 4);
+    idx.add(5, 5);
+    HAMapSearcher<int, int> searcher(idx);
+    EXPECT_EQ(searcher.search(6), nullptr);
+}
+
+TEST_F(HAMapSearcherTest, Get_Multiple_EdgeCases) {
+    // Edge case: empty key value
+    HAMapIndexer<int, int> idx;
+    idx.add(1, 1);
+    idx.add(2, 2);
+    idx.add(3, 3);
+    idx.add(4, 4);
+    idx.add(5, 5);
+    HAMapSearcher<int, int> searcher(idx);
+    EXPECT_EQ(searcher.search(0), nullptr);
+}
+
 TEST(UtilsTest, TestIsTrue)
 {
     uint32_t const count = 256;
@@ -238,3 +334,56 @@ TEST(ComprVsOrdinal, TestIsTrue)
     check_range<uint64_t, uint32_t>(111, 88774);
 }
 
+template <typename T>
+class EHMapTest : public ::testing::Test {
+protected:
+    HAMapIndexer<uint64_t, T> mk_indexer(uint32_t count) {
+        return HAMapIndexer<uint64_t, T>(count, DEFAULT_PAGE_SIZE);
+    }
+    HAMapSearcher<uint64_t, T> mk_searcher(HAMapIndexer<uint64_t, T> &idx) {
+        return HAMapSearcher<uint64_t, T>(idx, DEFAULT_PAGE_SIZE);
+    }
+    size_t get_value_size() const {
+        return sizeof(T);
+    }
+};
+
+using PrimitiveTypes = ::testing::Types<uint16_t, uint32_t, uint64_t>;
+
+TYPED_TEST_SUITE(EHMapTest, PrimitiveTypes);
+
+TYPED_TEST(EHMapTest, EHMapCreationWithBucketsAndNOIO)
+{
+    uint32_t const from = 512, to = this->get_value_size() > 2 ? 100500 : 40000, count = (to - from) / 2;
+    // try to create with known records count
+    auto indexer = this->mk_indexer(count);
+    for( uint32_t i = from; i < to; ++i )
+    {
+        if( 0 == (i & 1) )
+            indexer.add(i, i + 36);
+    }
+
+    EXPECT_EQ(count, indexer.size());
+
+    // use direct construct of searcher from indexer
+
+    auto searcher = this->mk_searcher(indexer);
+
+    for( uint32_t i = from; i < to; ++i )
+    {
+        auto const *v = searcher.search(i);
+        if( 0 == (i & 1) )
+        {
+            ASSERT_NE(nullptr, v);
+            EXPECT_EQ(i + 36, *v);
+        }
+        else
+        {
+            ASSERT_EQ(nullptr, v);
+        }
+
+        // and not found scan!
+        v = searcher.search(i + to);
+        ASSERT_EQ(nullptr, v);
+    }
+}

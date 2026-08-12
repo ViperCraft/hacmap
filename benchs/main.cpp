@@ -340,13 +340,14 @@ static void bench( size_t from, size_t to )
     }
     
     {
-        HAMapIndexer<K, V> map(src.size());
+        int const PAGE_SIZE = 4096;
+        HAMapIndexer<K, V> map(src.size(), PAGE_SIZE);
         for( auto const &p : src )
         {
             map.add(p);
         }
         
-        HAMapSearcher<K, V> srch(map);
+        HAMapSearcher<K, V> srch(map, PAGE_SIZE);
         map.clear();
         bench_impl<K, V>(from, to, src, &srch, "eh_umap");
     }
